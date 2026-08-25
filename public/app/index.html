@@ -245,6 +245,7 @@
         linear-gradient(180deg, rgba(26,36,74,.9), rgba(12,18,44,.9));
       border: 1px solid var(--border);
     }
+    .waveform-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.55; pointer-events: none; }
     .tl-fill {
       position: absolute; height: 100%;
       background: linear-gradient(180deg, rgba(242,196,107,.34), rgba(111,168,255,.24));
@@ -576,7 +577,10 @@
               <div class="time-val" id="endVal">0:00.0</div>
             </div>
           </div>
-          <div class="timeline"><div class="tl-fill" id="tlFill"></div></div>
+          <div class="timeline" id="timelineWrap">
+            <canvas id="waveformCanvas" class="waveform-canvas"></canvas>
+            <div class="tl-fill" id="tlFill"></div>
+          </div>
           <div class="tl-labels">
             <span>0:00</span>
             <span id="trimDur">Full duration</span>
@@ -1804,6 +1808,89 @@ function handleFileInput(input) {
   input.value = '';  // Reset so same file can be added again
 }
 
+// ── Waveform preview (Web Audio API, client-side only) ──────────────
+// Decodes just the audio track for a lightweight visual behind the trim
+// timeline. Best-effort: silently no-ops on video-only files, huge files,
+// or decode errors -- this is a visual aid, never load-bearing for trim.
+let waveformPeaks = null;
+
+async function renderWaveform(file) {
+  waveformPeaks = null;
+  const canvas = document.getElementById('waveformCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const MAX_DECODE_BYTES = 150 * 1024 * 1024; // skip decode on very large files
+  if (!file || file.size > MAX_DECODE_BYTES) return;
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const audioCtx = new AudioCtx();
+    let audioBuffer;
+    try {
+      audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+    } finally {
+      audioCtx.close().catch(() => {});
+    }
+
+    const raw = audioBuffer.getChannelData(0);
+    const samples = 400; // resolution of the waveform, independent of canvas pixel size
+    const blockSize = Math.max(1, Math.floor(raw.length / samples));
+    const peaks = new Float32Array(samples);
+    for (let i = 0; i < samples; i++) {
+      let max = 0;
+      const start = i * blockSize;
+      const end = Math.min(start + blockSize, raw.length);
+      for (let j = start; j < end; j++) {
+        const v = Math.abs(raw[j]);
+        if (v > max) max = v;
+      }
+      peaks[i] = max;
+    }
+    waveformPeaks = peaks;
+    drawWaveform();
+  } catch (e) {
+    // No audio track, unsupported codec for decodeAudioData, or file too
+    // large to decode quickly -- fine, the timeline still works without it.
+    waveformPeaks = null;
+  }
+}
+
+function drawWaveform() {
+  const canvas = document.getElementById('waveformCanvas');
+  if (!canvas) return;
+  const wrap = document.getElementById('timelineWrap');
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = wrap ? wrap.clientWidth : canvas.clientWidth;
+  const cssH = wrap ? wrap.clientHeight : canvas.clientHeight;
+  if (!cssW || !cssH) return;
+  canvas.width  = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+
+  const ctx = ctx2d(canvas, dpr);
+  ctx.clearRect(0, 0, cssW, cssH);
+  if (!waveformPeaks || !waveformPeaks.length) return;
+
+  const mid = cssH / 2;
+  const barW = cssW / waveformPeaks.length;
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#6366f1';
+  for (let i = 0; i < waveformPeaks.length; i++) {
+    const h = Math.max(1, waveformPeaks[i] * mid);
+    ctx.fillRect(i * barW, mid - h, Math.max(1, barW - 1), h * 2);
+  }
+}
+
+function ctx2d(canvas, dpr) {
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
+window.addEventListener('resize', () => { if (waveformPeaks) drawWaveform(); });
+
 async function handleFile(file) {
   if (!file) return;
   inputFile = file;
@@ -1821,6 +1908,7 @@ async function handleFile(file) {
   if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
   currentObjectURL = URL.createObjectURL(file);
   vid.src = currentObjectURL;
+  renderWaveform(file);
   vid.onloadedmetadata = () => {
     vidDur = vid.duration;
     const s = document.getElementById('trimStart');
