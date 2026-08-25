@@ -1,24 +1,45 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "ffmpeg webCLI — Browser Video & Audio Toolkit" },
+      {
+        name: "description",
+        content:
+          "Run ffmpeg commands entirely in your browser. Convert, trim, and transcode video and audio locally with no uploads.",
+      },
+      { property: "og:title", content: "ffmpeg webCLI — Browser Video & Audio Toolkit" },
+      {
+        property: "og:description",
+        content:
+          "Run ffmpeg commands entirely in your browser. Convert, trim, and transcode video and audio locally with no uploads.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
+  useEffect(() => {
+    window.location.replace("/app/index.html");
+  }, []);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold text-foreground">ffmpeg webCLI</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Loading the app…</p>
+        <a
+          className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          href="/app/index.html"
+        >
+          Open now
+        </a>
+      </div>
     </div>
   );
 }
