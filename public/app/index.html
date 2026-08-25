@@ -127,14 +127,6 @@
       border: 1px solid rgba(102,224,163,.28);
       display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
     }
-    .gh-link {
-      margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
-      font-size: 0.78rem; font-weight: 600; color: var(--muted); text-decoration: none;
-      padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border);
-      background: var(--surface2); transition: all .25s cubic-bezier(.2,.8,.2,1); white-space: nowrap;
-    }
-    .gh-link:hover { color: #0a0d1c; border-color: transparent; background: var(--accent); box-shadow: var(--glow-gold); }
-    @media (max-width: 600px) { .gh-link span { display: none; } .gh-link { padding: 7px 11px; } }
 
     /* ── Layout ── */
     .container { max-width: 1280px; margin: 0 auto; padding: 26px 28px 60px; }
@@ -489,10 +481,6 @@
       .out-actions { flex-direction: column; align-items: stretch; }
       .out-actions .btn { justify-content: center; }
       .out-actions .out-size { text-align: center; }
-    }
-
-    @media (max-width: 380px) {
-      .ops-grid { grid-template-columns: repeat(3, 1fr); }
     }
 
     /* ── Raw FFmpeg example library ── */
@@ -4192,58 +4180,6 @@ function buildWebmEmergencyNoAudioArgs(args, videoWidth = 0) {
   return rebuilt;
 }
 
-// Last-resort rescue: this ffmpeg.wasm build's libvpx (VP8/VP9) can crash with
-// "memory access out of bounds" regardless of resolution. H.264/MP4 is stable,
-// so when all WebM attempts fail we transcode to MP4 and change the output name.
-function buildMp4RescueArgs(args) {
-  if (!Array.isArray(args) || args.length < 2) return null;
-  const outName = args[args.length - 1];
-  if (!/\.webm$/i.test(String(outName))) return null;
-
-  const mp4OutName = String(outName).replace(/\.webm$/i, '.mp4');
-  const body = args.slice(0, -1);
-  const rebuilt = [];
-  let vfValue = '';
-  let hasFilterComplex = false;
-  let hasNoAudio = false;
-
-  const dropPairFlags = new Set([
-    '-c:v', '-c:a', '-b:v', '-crf', '-deadline', '-cpu-used', '-row-mt', '-tile-columns',
-    '-frame-parallel', '-lag-in-frames', '-b:a', '-ac', '-threads', '-g', '-auto-alt-ref',
-    '-q:v', '-qmin', '-qmax'
-  ]);
-
-  for (let i = 0; i < body.length; i++) {
-    const t = body[i];
-    const n = body[i + 1];
-
-    if (t === '-an') { hasNoAudio = true; rebuilt.push(t); continue; }
-
-    if (t === '-filter_complex') {
-      hasFilterComplex = true;
-      rebuilt.push(t, n);
-      i++;
-      continue;
-    }
-
-    if (t === '-vf') { vfValue = n || ''; i++; continue; }
-    if (dropPairFlags.has(t)) { i++; continue; }
-    rebuilt.push(t);
-  }
-
-  if (!hasFilterComplex && vfValue) {
-    rebuilt.push('-vf', vfValue);
-  }
-
-  rebuilt.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-pix_fmt', 'yuv420p');
-  if (!hasNoAudio) {
-    rebuilt.push('-c:a', 'aac', '-b:a', '128k', '-ac', '2');
-  }
-  rebuilt.push('-movflags', '+faststart');
-  rebuilt.push(mp4OutName);
-  return rebuilt;
-}
-
 // Some ffmpeg.wasm core builds crash inside libvpx (VP8/VP9) at frame 1 regardless
 // of resolution/bitrate. When WebM cannot be produced, fall back to a reliable
 // MP4 (H.264/AAC) so the user still gets a usable output file.
@@ -5400,25 +5336,6 @@ Object.assign(window, {
   downloadBatchAllAsZip, selectBatchOutput,
   confirmAutoCaptionTranscript, clearAutoCaptionTranscript, updateAutoCaptionTranscript
 });
-
-/**
- * Explicitly clean up transcriber and its model to free memory.
- * Called before re-engaging ffmpeg to prevent OOM.
- */
-async function cleanupAutoCaptionResources() {
-  try {
-    if (autoCaptionTranscriber && typeof autoCaptionTranscriber.dispose === 'function') {
-      await autoCaptionTranscriber.dispose();
-    }
-  } catch (e) {
-    // Ignore errors during cleanup
-  }
-  autoCaptionTranscriber = null;
-  autoCaptionSegments = null;
-  
-  // Hint garbage collection
-  if (typeof gc === 'function') gc();
-}
 
 // ──────────────────────────────────────────────────────────────
 // EXPOSE AUTO-CAPTION FUNCTIONS TO GLOBAL SCOPE
