@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d0f1a"/>
+      <stop offset="100%" stop-color="#161a2e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5f7fe8"/>
+      <stop offset="100%" stop-color="#7a93f0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- soft waveform decoration -->
+  <g opacity="0.25" stroke="#5f7fe8" stroke-width="3" fill="none">
+    <path d="M0 520 Q60 470 120 520 T240 520 T360 520 T480 520 T600 520 T720 520 T840 520 T960 520 T1080 520 T1200 520"/>
+    <path d="M0 560 Q60 530 120 560 T240 560 T360 560 T480 560 T600 560 T720 560 T840 560 T960 560 T1080 560 T1200 560"/>
+  </g>
+
+  <!-- icon badge -->
+  <rect x="120" y="185" width="140" height="140" rx="30" fill="url(#accent)"/>
+  <path d="M172 232l58 33-58 33z" fill="#0d0f1a"/>
+
+  <!-- wordmark -->
+  <text x="300" y="255" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" fill="#f5f6fb">videowidget</text>
+  <text x="300" y="305" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="400" fill="#9aa3c0">ffmpeg webCLI</text>
+
+  <!-- tagline -->
+  <text x="120" y="410" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="400" fill="#d4d8ea">
+    Browser-based video &amp; audio toolkit
+  </text>
+  <text x="120" y="455" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="400" fill="#d4d8ea">
+    powered by ffmpeg.wasm — no uploads, no servers
+  </text>
+
+  <!-- bottom accent bar -->
+  <rect x="0" y="610" width="1200" height="20" fill="url(#accent)"/>
+</svg>
