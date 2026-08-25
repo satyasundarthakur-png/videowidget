@@ -2454,6 +2454,12 @@ async function runProcess() {
           addLog('Unloading ffmpeg.wasm to free memory during transcription…', 'ok');
           try {
             await ffmpeg.terminate();
+            // isLoaded() reads statusDot's 'loaded' class, which loadFFmpeg() sets
+            // once and nothing else ever clears. Without this, isLoaded() keeps
+            // reporting true after terminate(), so the reload-before-embed logic
+            // below (and in confirmAutoCaptionTranscript) skips reloading ffmpeg
+            // entirely and the embed step fails against a terminated instance.
+            document.getElementById('statusDot').classList.remove('loaded');
             console.log('ffmpeg.wasm unloaded successfully');
           } catch (e) {
             console.warn('Error unloading ffmpeg.wasm:', e);
@@ -4120,6 +4126,7 @@ async function execWithWebmFallback(args, videoWidth = 0) {
         addLog('VP9 WebM failed; retrying with VP8 (libvpx) WebM…', 'warn');
         try {
           await ffmpeg.terminate();
+          document.getElementById('statusDot').classList.remove('loaded');
           await loadFFmpeg();
           // writeFile TRANSFERS (detaches) the passed buffer, so always write a
           // fresh copy and keep inBytes as the intact master across reloads.
@@ -4154,6 +4161,7 @@ async function execWithWebmFallback(args, videoWidth = 0) {
       addLog('WebM (libvpx) could not be produced in this ffmpeg.wasm build; encoding H.264 and packaging it under the .webm name instead.', 'warn');
       try {
         await ffmpeg.terminate();
+        document.getElementById('statusDot').classList.remove('loaded');
         await loadFFmpeg();
         // Fresh copy: writeFile detaches the buffer it is given (see above).
         if (inName && inBytes) await ffmpeg.writeFile(inName, new Uint8Array(inBytes));
